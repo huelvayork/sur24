@@ -3,6 +3,9 @@ from micropyGPS import MicropyGPS
 import time
 
 class A9G:
+    _connected = False
+    _connected_time = 0
+    
     def __init__(self, uart_id):
         self.uart = UART(uart_id, 115200, timeout=200)                         # init with given baudrate
         self.gps = MicropyGPS(location_formatting='dd') # decimal - 37.6555N
@@ -19,7 +22,7 @@ class A9G:
         print(response)
         return (text in response)
         
-    def command(self, command, expect="OK", timeout=100):
+    def command(self, command, expect="OK", timeout=20):
         print(command)
         self.write(command+"\r\n")
         return self._expect(text=expect, timeout=timeout)
@@ -52,7 +55,12 @@ class A9G:
         self.command("AT+CGACT=1,1") # connect to internet
 
     def is_connected(self):
-        return self.command("AT+CIPSTATUS?", expect="INITIAL")
+        now = time.time()
+        if (now > self._connected_time + 10):
+            self._connected = self.command("AT+CIPSTATUS?", expect="INITIAL", timeout=20)
+            self._connected_time = now
+            
+        return self._connected
 
     def update(self):
         while self.uart.any():
