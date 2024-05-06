@@ -49,10 +49,10 @@ class A9G:
         return self.gps.fix_type>=2
     
     def conn_init(self):
-        self.command("AT+CMGF=1") # SMS as text
-        self.command("AT+CGATT=1")  #Attach network, this command is necessary if the Internet is needed.
-        self.command('AT+CGDCONT=1,"IP","orangeworld"') # set APN
-        self.command("AT+CGACT=1,1") # connect to internet
+        self.command("AT+CMGF=1", timeout=100) # SMS as text
+        self.command("AT+CGATT=1", timeout=100)  #Attach network, this command is necessary if the Internet is needed.
+        self.command('AT+CGDCONT=1,"IP","orangeworld"', timeout=100) # set APN
+        self.command("AT+CGACT=1,1", timeout=100) # connect to internet
 
     def is_connected(self):
         now = time.time()
