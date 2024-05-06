@@ -32,7 +32,7 @@ last_smsbuttonpress = 0
 
 a9g = A9G(uart_id = 2)
 
-# ESP32 Pin assignment 
+# OLED display Pin assignment 
 i2c = SoftI2C(scl=Pin(21), sda=Pin(22))
 oled_width = 128
 oled_height = 64
@@ -77,7 +77,12 @@ def display_data():
     oled.text("{:02d}:{:02d}:{:02d}".format(a9g.gps.timestamp[0], a9g.gps.timestamp[1],int(a9g.gps.timestamp[2])),62,50)
     oled.show()
 
-
+def display_text(text):
+    global oled
+    oled.fill(0)
+    oled.text(text, 0,20)
+    oled.show
+    
 def sms_buttonpress():
     global last_smsbuttonpress
     global must_send_sms
@@ -183,8 +188,16 @@ def lights_both():
         left_relay.on()
 
 
+
+# Main proogram
+
+display_text("boot...")
+print("boot")
 lights_off()
 
+
+# Wait for  A9G module to booot
+time.sleep(5)
 a9g.conn_init()
 a9g.gps.local_offset = 2
 a9g.gps_init()
@@ -199,6 +212,7 @@ display_time = time.time()
 traccar_time = time.time()
 
 must_send_sms = False
+
 
 while True:
 #    wdt.feed()
