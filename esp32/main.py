@@ -77,13 +77,23 @@ def display_data():
     oled.text("{:02d}:{:02d}:{:02d}".format(a9g.gps.timestamp[0], a9g.gps.timestamp[1],int(a9g.gps.timestamp[2])),62,50)
     oled.show()
 
+def display_lights():
+    global lights_state
+    
+    if lights_state==LIGHTS_LEFT:
+        display_text("      <----")
+    elif lights_state==LIGHTS_RIGHT:
+        display_text("      ----->")
+    else:
+        display_text("       <-->")
+                     
 def display_text(text):
     global oled
     oled.fill(0)
     oled.text(text, 0,20)
-    oled.show
+    oled.show()
     
-def sms_buttonpress():
+def sms_buttonpress(pin=None):
     global last_smsbuttonpress
     global must_send_sms
     
@@ -127,10 +137,7 @@ def on_buttonpress(pin=None):
             lights_state = LIGHTS_OFF
 
     elif pin==warning_button:
-        if lights_state == LIGHTS_BOTH:
-            lights_state = LIGHTS_OFF
-        else:
-            lights_state = LIGHTS_BOTH
+        lights_state = LIGHTS_BOTH
             
     # Enable interrupts
     machine.enable_irq(irq_state)        
@@ -221,7 +228,10 @@ while True:
     a9g.update()
     
     if now >= display_time:
-        display_data()
+        if lights_state == LIGHTS_OFF:
+            display_data()
+        else:
+            display_lights()
         display_time = now + 1
         
     if now > traccar_time and a9g.gps_fixed() and a9g.is_connected():
