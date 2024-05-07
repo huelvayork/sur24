@@ -27,6 +27,9 @@ right_relay=Pin(13, Pin.OUT)
 left_relay.on()
 right_relay.on()
 
+emergency_light = Pin(23, Pin.OUT)
+must_switch_emergency_light = False
+
 lights_lasttime = 0
 last_smsbuttonpress = 0
 
@@ -96,18 +99,21 @@ def display_text(text):
 def sms_buttonpress(pin=None):
     global last_smsbuttonpress
     global must_send_sms
+    global must_switch_emergency_light
     
     now = time.time()
     if now > last_smsbuttonpress + 5:
         last_smsbuttonpress = now
         must_send_sms = True
+        must_switch_emergency_light = True
     
 
 on_buttonpress_lasttime=0
 def on_buttonpress(pin=None):
     global lights_state
     global on_buttonpress_lasttime
-
+    global must_switch_emergency_light
+    
     # Disable interrupts
     irq_state = machine.disable_irq()
 
@@ -138,6 +144,7 @@ def on_buttonpress(pin=None):
 
     elif pin==warning_button:
         lights_state = LIGHTS_BOTH
+        must_switch_emergency_light = True
             
     # Enable interrupts
     machine.enable_irq(irq_state)        
@@ -241,6 +248,13 @@ while True:
     if must_send_sms:
         must_send_sms = False
         send_location_sms()
+    
+    if must_switch_emergency_light:
+        emergency_light.on()
+        time.sleep(2)
+        emergency_light.off()
+        must_switch_emergency_light = False
+
 
     if lights_state == LIGHTS_OFF:
         lights_off()
