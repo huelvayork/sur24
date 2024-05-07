@@ -7,8 +7,12 @@ class A9G:
     _connected_time = 0
     
     def __init__(self, uart_id):
-        self.uart = UART(uart_id, 115200, timeout=200)                         # init with given baudrate
+        self.uart = UART(uart_id, 115200, timeout=20)                         # init with given baudrate
         self.gps = MicropyGPS(location_formatting='dd') # decimal - 37.6555N
+        self.reset()
+
+    def reset(self):
+        return self.command("ATZ", timeout=1000)
 
     def _expect(self, text, timeout=200):
         # timeout milliseconds * 1000000 = nanoseconds
@@ -37,9 +41,8 @@ class A9G:
     def sms(self, dest, text):
         self.command("AT+CMGF=1")
         self.command('AT+CMGS="{}"\r\n{}{}'.format(dest, text, chr(0x1a)))
-            
+                    
     def gps_init(self):
-        self.command("ATZ")
         self.command("AT+GPS=1")
     
     def gps_periodic_update(self,seconds):
