@@ -12,10 +12,11 @@ LIGHTS_RIGHT=1
 LIGHTS_BOTH=3
 lights_state=LIGHTS_OFF
 
-LEFT_PIN=25
-RIGHT_PIN=26
-WARNING_PIN=33
-SMS_PIN=32
+RIGHT_PIN=4
+LEFT_PIN=5
+WARNING_PIN=18
+SMS_PIN=19
+EMERGENCY_LIGHT=23
 
 left_button=Pin(LEFT_PIN, Pin.IN, Pin.PULL_UP)
 right_button=Pin(RIGHT_PIN, Pin.IN, Pin.PULL_UP)
@@ -24,10 +25,10 @@ sms_button=Pin(SMS_PIN, Pin.IN, Pin.PULL_UP)
 
 left_relay=Pin(14, Pin.OUT)
 right_relay=Pin(13, Pin.OUT)
-left_relay.on()
-right_relay.on()
+left_relay.off()
+right_relay.off()
 
-emergency_light = Pin(23, Pin.OUT)
+emergency_light = Pin(EMERGENCY_LIGHT, Pin.OUT)
 must_switch_emergency_light = False
 
 lights_lasttime = 0
@@ -80,16 +81,7 @@ def display_data():
     oled.text("{:02d}:{:02d}:{:02d}".format(a9g.gps.timestamp[0], a9g.gps.timestamp[1],int(a9g.gps.timestamp[2])),62,50)
     oled.show()
 
-def display_lights():
-    global lights_state
-    
-    if lights_state==LIGHTS_LEFT:
-        display_text("      <----")
-    elif lights_state==LIGHTS_RIGHT:
-        display_text("      ----->")
-    else:
-        display_text("       <-->")
-                     
+ 
 def display_text(text):
     global oled
     oled.fill(0)
@@ -114,14 +106,9 @@ def on_buttonpress(pin=None):
     global on_buttonpress_lasttime
     global must_switch_emergency_light
     
-    # Disable interrupts
-    irq_state = machine.disable_irq()
-
     now = time.ticks_ms()
     if (now < on_buttonpress_lasttime + 500):
         print("{} paso".format(pin))
-        # Enable interrupts
-        machine.enable_irq(irq_state)
         return
     
     on_buttonpress_lasttime = now
@@ -145,14 +132,11 @@ def on_buttonpress(pin=None):
     elif pin==warning_button:
         lights_state = LIGHTS_BOTH
         must_switch_emergency_light = True
-            
-    # Enable interrupts
-    machine.enable_irq(irq_state)        
 
 
 def lights_off():
-    left_relay.on()
-    right_relay.on()
+    left_relay.off()
+    right_relay.off()
 
 
 def lights_left():
@@ -164,10 +148,12 @@ def lights_left():
 
     lights_lasttime = now
 
-    if left_relay.value() == 1:
-        left_relay.off()
-    else:
+    if left_relay.value() == 0:
         left_relay.on()
+        display_text("     <-----")
+    else:
+        left_relay.off()
+        display_text("")
 
 
 def lights_right():
@@ -179,10 +165,12 @@ def lights_right():
 
     lights_lasttime = now
 
-    if right_relay.value() == 1:
-        right_relay.off()
-    else:
+    if right_relay.value() == 0:
         right_relay.on()
+        display_text("      ----->")
+    else:
+        right_relay.off()
+        display_text("")
     
 
 def lights_both():
@@ -194,28 +182,42 @@ def lights_both():
 
     lights_lasttime = now
 
-    if left_relay.value() == 1:
-        right_relay.off()
-        left_relay.off()
-    else:
+    if left_relay.value() == 0:
         right_relay.on()
         left_relay.on()
+        display_text("     <--   -->")
+    else:
+        right_relay.off()
+        left_relay.off()
+        display_text("")
 
 
 
 # Main proogram
 
-display_text("boot...")
-print("boot")
+def boot_animation():
+    fases = ['|', '/', '-', '|', '/', '-']
+    for fase in fases:
+        display_text(f'  {fase} Booting...')
+        time.sleep(0.5)
+
+for _ in range(2):
+    boot_animation()
+
+display_text("  [Booting...]")
+print("[+] Booting...")
 lights_off()
 
 
 # Wait for  A9G module to booot
-time.sleep(5)
-a9g.conn_init()
+boot_time = time.time()
+while (not a9g.reset()) and (time.time() < boot_time + 60):
+    display_text(f"reset a9g: {time.time()}")
+    
 a9g.gps.local_offset = 2
 a9g.gps_init()
 a9g.gps_periodic_update(1)
+a9g.conn_init()
 
 sms_button.irq(on_buttonpress, trigger=Pin.IRQ_FALLING)
 left_button.irq(on_buttonpress, trigger=Pin.IRQ_FALLING)
@@ -233,17 +235,18 @@ while True:
     now = time.time()
     
     a9g.update()
-    
+         
+        
     if now >= display_time:
+        display_time = now + 1
         if lights_state == LIGHTS_OFF:
             display_data()
-        else:
-            display_lights()
-        display_time = now + 1
-        
-    if now > traccar_time and a9g.gps_fixed() and a9g.is_connected():
-            send_location_traccar()
-            traccar_time = now + 10
+
+
+#    if now > traccar_time and a9g.gps_fixed() and a9g.is_connected():
+#            send_location_traccar()
+#            traccar_time = now + 10
+
 
     if must_send_sms:
         must_send_sms = False
@@ -251,7 +254,7 @@ while True:
     
     if must_switch_emergency_light:
         emergency_light.on()
-        time.sleep(2)
+        time.sleep(0.2)
         emergency_light.off()
         must_switch_emergency_light = False
 
